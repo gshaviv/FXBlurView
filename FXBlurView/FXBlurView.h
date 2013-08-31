@@ -54,4 +54,5 @@
 @property (nonatomic, strong) UIColor *blurTintColor;
 @property (nonatomic,assign) CGBlendMode tintBlendMode;
 
+- (void) blurRect:(CGRect)rect inView:(UIView*)sourceView;
 @end

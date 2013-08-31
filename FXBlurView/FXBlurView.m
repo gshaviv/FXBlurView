@@ -122,6 +122,7 @@ NSString *const FXBlurViewUpdatesEnabledNotification = @"FXBlurViewUpdatesEnable
 @property (nonatomic, assign) BOOL iterationsSet;
 @property (nonatomic, assign) BOOL blurRadiusSet;
 @property (nonatomic, assign) BOOL dynamicSet;
+@property (nonatomic, assign) BOOL usingStaticImage;
 
 @end
 
@@ -235,10 +236,10 @@ static NSInteger updatesEnabled = 1;
 
 - (void)displayLayer:(CALayer *)layer
 {
-    if (self.superview)
+    if (self.superview && !_usingStaticImage)
     {
         NSArray *hiddenViews = [self prepareSuperviewForSnapshot:self.superview];
-        UIImage *snapshot = [self snapshotOfSuperview:self.superview];
+        UIImage *snapshot = [self snapshotOfSuperview:self.superview rect:self.frame];
         [self restoreSuperviewAfterSnapshot:hiddenViews];
         NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
         UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
@@ -250,16 +251,31 @@ static NSInteger updatesEnabled = 1;
     }
 }
 
-- (UIImage *)snapshotOfSuperview:(UIView *)superview
+- (UIImage *)snapshotOfSuperview:(UIView *)superview rect:(CGRect)rect
 {
     CGFloat scale = (self.iterations > 0)? 4.0f/MAX(8, floor(self.blurRadius)): 1.0f;
-    UIGraphicsBeginImageContextWithOptions(self.bounds.size, YES, scale);
+    UIGraphicsBeginImageContextWithOptions(rect.size, YES, scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
-    CGContextTranslateCTM(context, -self.frame.origin.x, -self.frame.origin.y);
+    CGContextTranslateCTM(context, -rect.origin.x, -rect.origin.y);
     [superview.layer renderInContext:context];
     UIImage *snapshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return snapshot;
+}
+
+- (void) blurRect:(CGRect)rect inView:(UIView*)sourceView {
+    self.hidden = YES;
+    _dynamic = NO;
+    UIImage *snapshot = [self snapshotOfSuperview:sourceView rect:rect];
+    NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
+    UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
+                                                  iterations:iterations
+                                                   tintColor:self.blurTintColor
+                                               tintBlendMode:_tintBlendMode];
+    self.layer.contents = (id)blurredImage.CGImage;
+    self.layer.contentsScale = blurredImage.scale;
+    _usingStaticImage = YES;
+    self.hidden = NO;
 }
 
 - (NSArray *)prepareSuperviewForSnapshot:(UIView *)superview
@@ -268,9 +284,7 @@ static NSInteger updatesEnabled = 1;
     NSInteger index = [superview.subviews indexOfObject:self];
     if (index != NSNotFound)
     {
-        for (int i = index; i < [superview.subviews count]; i++)
-        {
-            UIView *view = superview.subviews[i];
+        for (UIView *view in superview.subviews) {
             if (!view.hidden)
             {
                 view.hidden = YES;
@@ -278,6 +292,7 @@ static NSInteger updatesEnabled = 1;
             }
         }
     }
+    self.hidden = YES;
     return views;
 }
 
@@ -287,6 +302,7 @@ static NSInteger updatesEnabled = 1;
     {
         view.hidden = NO;
     }
+    self.hidden = NO;
 }
 
 - (void)updateAsynchronously
