@@ -45,7 +45,7 @@
 
 @implementation UIImage (FXBlurView)
 
-- (UIImage *)blurredImageWithRadius:(CGFloat)radius iterations:(NSUInteger)iterations tintColor:(UIColor *)tintColor
+- (UIImage *)blurredImageWithRadius:(CGFloat)radius iterations:(NSUInteger)iterations tintColor:(UIColor *)tintColor tintBlendMode:(CGBlendMode)blendMode
 {
     //image must be nonzero size
     if (floorf(self.size.width) * floorf(self.size.height) <= 0.0f) return self;
@@ -97,7 +97,7 @@
     if (tintColor && ![tintColor isEqual:[UIColor clearColor]])
     {
         CGContextSetFillColorWithColor(ctx, [tintColor colorWithAlphaComponent:0.25].CGColor);
-        CGContextSetBlendMode(ctx, kCGBlendModePlusLighter);
+        CGContextSetBlendMode(ctx, blendMode);
         CGContextFillRect(ctx, CGRectMake(0, 0, buffer1.width, buffer1.height));
     }
     
@@ -149,7 +149,7 @@ static NSInteger updatesEnabled = 1;
     if (!_iterationsSet) _iterations = 3;
     if (!_blurRadiusSet) _blurRadius = 40.0f;
     if (!_dynamicSet) _dynamic = YES;
-    
+    _tintBlendMode = kCGBlendModePlusLighter;
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(updateAsynchronously)
@@ -243,7 +243,8 @@ static NSInteger updatesEnabled = 1;
         NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
         UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                       iterations:iterations
-                                                       tintColor:self.blurTintColor];
+                                                       tintColor:self.blurTintColor
+                                                   tintBlendMode:_tintBlendMode];
         self.layer.contents = (id)blurredImage.CGImage;
         self.layer.contentsScale = blurredImage.scale;
     }
@@ -302,7 +303,8 @@ static NSInteger updatesEnabled = 1;
             NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
             UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                           iterations:iterations
-                                                           tintColor:self.blurTintColor];
+                                                           tintColor:self.blurTintColor
+                                                       tintBlendMode:_tintBlendMode];
             dispatch_sync(dispatch_get_main_queue(), ^{
                 
                 self.updating = NO;
