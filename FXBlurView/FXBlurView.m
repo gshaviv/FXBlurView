@@ -150,16 +150,7 @@ static NSInteger updatesEnabled = 1;
     if (!_blurRadiusSet) _blurRadius = 40.0f;
     if (!_dynamicSet) _dynamic = YES;
     
-    int unsigned numberOfMethods;
-    Method *methods = class_copyMethodList([UIView class], &numberOfMethods);
-    for (int i = 0; i < numberOfMethods; i++)
-    {
-        if (method_getName(methods[i]) == @selector(tintColor))
-        {
-            _tintColor = super.tintColor;
-        }
-    }
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(updateAsynchronously)
                                                  name:FXBlurViewUpdatesEnabledNotification
@@ -218,9 +209,9 @@ static NSInteger updatesEnabled = 1;
     }
 }
 
-- (void)setTintColor:(UIColor *)tintColor
+- (void)setBlurTintColor:(UIColor *)tintColor
 {
-    _tintColor = tintColor;
+    _blurTintColor = tintColor;
     [self setNeedsDisplay];
 }
 
@@ -252,7 +243,7 @@ static NSInteger updatesEnabled = 1;
         NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
         UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                       iterations:iterations
-                                                       tintColor:self.tintColor];
+                                                       tintColor:self.blurTintColor];
         self.layer.contents = (id)blurredImage.CGImage;
         self.layer.contentsScale = blurredImage.scale;
     }
@@ -311,7 +302,7 @@ static NSInteger updatesEnabled = 1;
             NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
             UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                           iterations:iterations
-                                                           tintColor:self.tintColor];
+                                                           tintColor:self.blurTintColor];
             dispatch_sync(dispatch_get_main_queue(), ^{
                 
                 self.updating = NO;
