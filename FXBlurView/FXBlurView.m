@@ -45,7 +45,7 @@
 
 @implementation UIImage (FXBlurView)
 
-- (UIImage *)blurredImageWithRadius:(CGFloat)radius iterations:(NSUInteger)iterations tintColor:(UIColor *)tintColor tintBlendMode:(CGBlendMode)blendMode
+- (UIImage *)blurredImageWithRadius:(CGFloat)radius iterations:(NSUInteger)iterations tintColor:(UIColor *)tintColor tintBlendMode:(CGBlendMode)blendMode saturationFactor:(CGFloat)saturationDeltaFactor
 {
     //image must be nonzero size
     if (floorf(self.size.width) * floorf(self.size.height) <= 0.0f) return self;
@@ -83,11 +83,35 @@
         buffer1.data = buffer2.data;
         buffer2.data = temp;
     }
-    
+    BOOL hasSaturationChange = fabs(saturationDeltaFactor - 1.) > __FLT_EPSILON__;
+
+    if (hasSaturationChange) {
+        CGFloat s = saturationDeltaFactor;
+        CGFloat floatingPointSaturationMatrix[] = {
+            0.0722 + 0.9278 * s,  0.0722 - 0.0722 * s,  0.0722 - 0.0722 * s,  0,
+            0.7152 - 0.7152 * s,  0.7152 + 0.2848 * s,  0.7152 - 0.7152 * s,  0,
+            0.2126 - 0.2126 * s,  0.2126 - 0.2126 * s,  0.2126 + 0.7873 * s,  0,
+            0,                    0,                    0,  1,
+        };
+        const int32_t divisor = 256;
+        NSUInteger matrixSize = sizeof(floatingPointSaturationMatrix)/sizeof(floatingPointSaturationMatrix[0]);
+        int16_t saturationMatrix[matrixSize];
+        for (NSUInteger i = 0; i < matrixSize; ++i) {
+            saturationMatrix[i] = (int16_t)roundf(floatingPointSaturationMatrix[i] * divisor);
+        }
+        vImageMatrixMultiply_ARGB8888(&buffer1, &buffer2, saturationMatrix, divisor, NULL, NULL, kvImageNoFlags);
+        //swap buffers
+        void *temp = buffer1.data;
+        buffer1.data = buffer2.data;
+        buffer2.data = temp;
+    }
+
     //free buffers
     free(buffer2.data);
     free(tempBuffer);
-    
+
+
+
     //create image context from buffer
     CGContextRef ctx = CGBitmapContextCreate(buffer1.data, buffer1.width, buffer1.height,
                                              8, buffer1.rowBytes, CGImageGetColorSpace(imageRef),
@@ -151,6 +175,7 @@ static NSInteger updatesEnabled = 1;
     if (!_blurRadiusSet) _blurRadius = 40.0f;
     if (!_dynamicSet) _dynamic = YES;
     _tintBlendMode = kCGBlendModePlusLighter;
+    _saturationDeltaFactor = 1.;
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(updateAsynchronously)
@@ -245,7 +270,8 @@ static NSInteger updatesEnabled = 1;
         UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                       iterations:iterations
                                                        tintColor:self.blurTintColor
-                                                   tintBlendMode:_tintBlendMode];
+                                                   tintBlendMode:_tintBlendMode
+                                                saturationFactor:_saturationDeltaFactor];
         self.layer.contents = (id)blurredImage.CGImage;
         self.layer.contentsScale = blurredImage.scale;
     }
@@ -253,7 +279,7 @@ static NSInteger updatesEnabled = 1;
 
 - (UIImage *)snapshotOfSuperview:(UIView *)superview rect:(CGRect)rect
 {
-    CGFloat scale = (self.iterations > 0)? 8.0f/MAX(8, floor(self.blurRadius)): 1.0f;
+    CGFloat scale = (self.iterations > 0)? 4.0f/MAX(8, floor(self.blurRadius)): 1.0f;
     UIGraphicsBeginImageContextWithOptions(rect.size, YES, scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextTranslateCTM(context, -rect.origin.x, -rect.origin.y);
@@ -266,14 +292,17 @@ static NSInteger updatesEnabled = 1;
 - (void) blurRect:(CGRect)rect inView:(UIView*)sourceView {
     self.hidden = YES;
     _dynamic = NO;
+    if (sourceView) {
     UIImage *snapshot = [self snapshotOfSuperview:sourceView rect:rect];
     NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
     UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                   iterations:iterations
                                                    tintColor:self.blurTintColor
-                                               tintBlendMode:_tintBlendMode];
+                                               tintBlendMode:_tintBlendMode
+                                            saturationFactor:_saturationDeltaFactor];
     self.layer.contents = (id)blurredImage.CGImage;
     self.layer.contentsScale = blurredImage.scale;
+    }
     _usingStaticImage = YES;
     self.hidden = NO;
 }
@@ -320,7 +349,8 @@ static NSInteger updatesEnabled = 1;
             UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
                                                           iterations:iterations
                                                            tintColor:self.blurTintColor
-                                                       tintBlendMode:_tintBlendMode];
+                                                       tintBlendMode:_tintBlendMode
+                                                    saturationFactor:_saturationDeltaFactor];
             dispatch_sync(dispatch_get_main_queue(), ^{
                 
                 self.updating = NO;

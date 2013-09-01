@@ -35,13 +35,6 @@
 #import <Accelerate/Accelerate.h>
 
 
-@interface UIImage (FXBlurView)
-
-- (UIImage *)blurredImageWithRadius:(CGFloat)radius iterations:(NSUInteger)iterations tintColor:(UIColor *)tintColor tintBlendMode:(CGBlendMode)blendMode;
-
-@end
-
-
 @interface FXBlurView : UIView
 
 + (void)setUpdatesEnabled;
@@ -53,6 +46,7 @@
 @property (nonatomic, assign) CGFloat blurRadius;
 @property (nonatomic, strong) UIColor *blurTintColor;
 @property (nonatomic,assign) CGBlendMode tintBlendMode;
+@property (nonatomic,assign) CGFloat saturationDeltaFactor;
 
 - (void) blurRect:(CGRect)rect inView:(UIView*)sourceView;
 @end
