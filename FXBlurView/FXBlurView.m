@@ -310,7 +310,7 @@ static NSInteger updatesEnabled = 1;
     if (self.dynamic && !self.updating  && self.window && updatesEnabled > 0)
     {
         NSArray *hiddenViews = [self prepareSuperviewForSnapshot:self.superview];
-        UIImage *snapshot = [self snapshotOfSuperview:self.superview];
+        UIImage *snapshot = [self snapshotOfSuperview:self.superview rect:self.bounds];
         [self restoreSuperviewAfterSnapshot:hiddenViews];
         
         self.updating = YES;
