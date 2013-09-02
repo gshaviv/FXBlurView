@@ -42,6 +42,7 @@
 #error This class requires automatic reference counting
 #endif
 
+static BOOL renderLayer = YES;
 
 @implementation UIImage (FXBlurView)
 
@@ -277,13 +278,24 @@ static NSInteger updatesEnabled = 1;
     }
 }
 
++ (void) initialize {
+    if (self == [FXBlurView class]) {
+        if ([[UIView new] respondsToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
+            renderLayer = NO;
+        }
+    }
+}
 - (UIImage *)snapshotOfSuperview:(UIView *)superview rect:(CGRect)rect
 {
     CGFloat scale = (self.iterations > 0)? 4.0f/MAX(8, floor(self.blurRadius)): 1.0f;
     UIGraphicsBeginImageContextWithOptions(rect.size, YES, scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextTranslateCTM(context, -rect.origin.x, -rect.origin.y);
-    [superview.layer renderInContext:context];
+    if (renderLayer) {
+        [superview.layer renderInContext:context];
+    } else {
+        [superview drawViewHierarchyInRect:superview.bounds afterScreenUpdates:YES];
+    }
     UIImage *snapshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return snapshot;
