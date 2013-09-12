@@ -228,6 +228,7 @@ static NSInteger updatesEnabled = 1;
     _dynamic = dynamic;
     if (dynamic)
     {
+        _usingStaticImage = NO;
         [self updateAsynchronously];
     }
     else
