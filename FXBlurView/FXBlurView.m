@@ -177,6 +177,7 @@ static NSInteger updatesEnabled = 1;
     if (!_dynamicSet) _dynamic = YES;
     _tintBlendMode = kCGBlendModePlusLighter;
     _saturationDeltaFactor = 1.;
+    self.clipsToBounds = YES;
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(updateAsynchronously)
@@ -189,7 +190,6 @@ static NSInteger updatesEnabled = 1;
     if ((self = [super initWithFrame:frame]))
     {
         [self setUp];
-        self.clipsToBounds = YES;
     }
     return self;
 }
