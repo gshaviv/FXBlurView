@@ -35,6 +35,7 @@
 #import <objc/message.h>
 #import <QuartzCore/QuartzCore.h>
 #import <objc/message.h>
+#import "UIImage+ImageEffects.h"
 
 
 #import <Availability.h>
@@ -268,12 +269,13 @@ static NSInteger updatesEnabled = 1;
         NSArray *hiddenViews = [self prepareSuperviewForSnapshot:self.superview];
         UIImage *snapshot = [self snapshotOfSuperview:self.superview rect:self.frame];
         [self restoreSuperviewAfterSnapshot:hiddenViews];
-        NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
-        UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
-                                                      iterations:iterations
-                                                       tintColor:self.blurTintColor
-                                                   tintBlendMode:_tintBlendMode
-                                                saturationFactor:_saturationDeltaFactor];
+//        NSUInteger iterations = MAX(0, (NSInteger)self.iterations - 1);
+//        UIImage *blurredImage = [snapshot blurredImageWithRadius:self.blurRadius
+//                                                      iterations:iterations
+//                                                       tintColor:self.blurTintColor
+//                                                   tintBlendMode:_tintBlendMode
+//                                                saturationFactor:_saturationDeltaFactor];
+        UIImage *blurredImage = [snapshot applyBlurWithRadius:self.blurRadius tintColor:self.blurTintColor saturationDeltaFactor:_saturationDeltaFactor maskImage:nil];
         self.layer.contents = (id)blurredImage.CGImage;
         self.layer.contentsScale = blurredImage.scale;
     }
@@ -288,7 +290,7 @@ static NSInteger updatesEnabled = 1;
 }
 - (UIImage *)snapshotOfSuperview:(UIView *)superview rect:(CGRect)rect
 {
-    CGFloat scale = (self.iterations > 0)? 4.0f/MAX(8, floor(self.blurRadius)): 1.0f;
+    CGFloat scale = (self.iterations > 0)? 8.0f/MAX(8, floor(self.blurRadius)): 1.0f;
     UIGraphicsBeginImageContextWithOptions(rect.size, YES, scale);
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGContextTranslateCTM(context, -rect.origin.x, -rect.origin.y);
