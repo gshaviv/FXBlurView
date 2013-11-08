@@ -69,65 +69,65 @@ static BOOL renderLayer = YES;
     //Crop
     UIImage *outputImage = nil;
 
-    CGImageRef imageRef = CGImageCreateWithImageInRect([self CGImage], bounds);
+    CGImageRef imageRef = CGImageCreateWithImageInRect([self CGImage], CGRectScale(bounds, 1./scaleDownFactor));
     outputImage = [UIImage imageWithCGImage:imageRef];
 
     CGImageRelease(imageRef);
 
-    //Re-Size
-    CGImageRef sourceRef = [outputImage CGImage];
-    NSUInteger sourceWidth = CGImageGetWidth(sourceRef);
-    NSUInteger sourceHeight = CGImageGetHeight(sourceRef);
-
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-
-    unsigned char *sourceData = (unsigned char*) calloc(sourceHeight * sourceWidth * 4, sizeof(unsigned char));
-
-    NSUInteger bytesPerPixel = 4;
-    NSUInteger sourceBytesPerRow = bytesPerPixel * sourceWidth;
-    NSUInteger bitsPerComponent = 8;
-
-    CGContextRef context = CGBitmapContextCreate(sourceData, sourceWidth, sourceHeight, bitsPerComponent, sourceBytesPerRow, colorSpace, kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big);
-
-    CGContextDrawImage(context, CGRectMake(0, 0, sourceWidth, sourceHeight), sourceRef);
-    CGContextRelease(context);
-
-    NSUInteger destWidth = (NSUInteger) size.width / scaleDownFactor;
-    NSUInteger destHeight = (NSUInteger) size.height / scaleDownFactor;
-    NSUInteger destBytesPerRow = bytesPerPixel * destWidth;
-
-    unsigned char *destData = (unsigned char*) calloc(destHeight * destWidth * 4, sizeof(unsigned char));
-
-    vImage_Buffer src = {
-        .data = sourceData,
-        .height = sourceHeight,
-        .width = sourceWidth,
-        .rowBytes = sourceBytesPerRow
-    };
-
-    vImage_Buffer dest = {
-        .data = destData,
-        .height = destHeight,
-        .width = destWidth,
-        .rowBytes = destBytesPerRow
-    };
-
-    vImageScale_ARGB8888 (&src, &dest, NULL, kvImageNoInterpolation);
-
-    free(sourceData);
-
-    CGContextRef destContext = CGBitmapContextCreate(destData, destWidth, destHeight, bitsPerComponent, destBytesPerRow, colorSpace, kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big);
-
-    CGImageRef destRef = CGBitmapContextCreateImage(destContext);
-
-    outputImage = [UIImage imageWithCGImage:destRef];
-
-    CGImageRelease(destRef);
-
-    CGColorSpaceRelease(colorSpace);
-    CGContextRelease(destContext);
-
-    free(destData);
+//    //Re-Size
+//    CGImageRef sourceRef = [outputImage CGImage];
+//    NSUInteger sourceWidth = CGImageGetWidth(sourceRef);
+//    NSUInteger sourceHeight = CGImageGetHeight(sourceRef);
+//
+//    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+//
+//    unsigned char *sourceData = (unsigned char*) calloc(sourceHeight * sourceWidth * 4, sizeof(unsigned char));
+//
+//    NSUInteger bytesPerPixel = 4;
+//    NSUInteger sourceBytesPerRow = bytesPerPixel * sourceWidth;
+//    NSUInteger bitsPerComponent = 8;
+//
+//    CGContextRef context = CGBitmapContextCreate(sourceData, sourceWidth, sourceHeight, bitsPerComponent, sourceBytesPerRow, colorSpace, kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big);
+//
+//    CGContextDrawImage(context, CGRectMake(0, 0, sourceWidth, sourceHeight), sourceRef);
+//    CGContextRelease(context);
+//
+//    NSUInteger destWidth = (NSUInteger) size.width / scaleDownFactor;
+//    NSUInteger destHeight = (NSUInteger) size.height / scaleDownFactor;
+//    NSUInteger destBytesPerRow = bytesPerPixel * destWidth;
+//
+//    unsigned char *destData = (unsigned char*) calloc(destHeight * destWidth * 4, sizeof(unsigned char));
+//
+//    vImage_Buffer src = {
+//        .data = sourceData,
+//        .height = sourceHeight,
+//        .width = sourceWidth,
+//        .rowBytes = sourceBytesPerRow
+//    };
+//
+//    vImage_Buffer dest = {
+//        .data = destData,
+//        .height = destHeight,
+//        .width = destWidth,
+//        .rowBytes = destBytesPerRow
+//    };
+//
+//    vImageScale_ARGB8888 (&src, &dest, NULL, kvImageNoInterpolation);
+//
+//    free(sourceData);
+//
+//    CGContextRef destContext = CGBitmapContextCreate(destData, destWidth, destHeight, bitsPerComponent, destBytesPerRow, colorSpace, kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Big);
+//
+//    CGImageRef destRef = CGBitmapContextCreateImage(destContext);
+//
+//    outputImage = [UIImage imageWithCGImage:destRef];
+//
+//    CGImageRelease(destRef);
+//
+//    CGColorSpaceRelease(colorSpace);
+//    CGContextRelease(destContext);
+//
+//    free(destData);
 
     //Blur
     CGRect imageRect = { CGPointZero, outputImage.size };
@@ -400,8 +400,8 @@ static NSInteger updatesEnabled = 1;
 }
 - (UIImage *)snapshotOfSuperview:(UIView *)superview
 {
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGRectGetWidth(superview.frame), CGRectGetHeight(superview.frame)), NO, 1);
-    [superview drawViewHierarchyInRect:CGRectMake(0, 0, CGRectGetWidth(superview.frame), CGRectGetHeight(superview.frame)) afterScreenUpdates:NO];
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(CGRectGetWidth(superview.bounds), CGRectGetHeight(superview.bounds)), NO, 1./scaleDownFactor);
+    [superview drawViewHierarchyInRect:CGRectMake(0, 0, CGRectGetWidth(superview.bounds), CGRectGetHeight(superview.bounds)) afterScreenUpdates:NO];
     UIImage *snapshot = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return snapshot;
@@ -412,11 +412,13 @@ static NSInteger updatesEnabled = 1;
     _dynamic = NO;
     if (sourceView) {
         UIImage *snapshot = [self snapshotOfSuperview:sourceView];
+        self.backgroundColor = self.blurTintColor;
         dispatch_to_background(^{
             UIImage *blurredImage = [snapshot applyBlurWithCrop:rect resize:rect.size blurRadius:self.blurRadius tintColor:self.blurTintColor saturationDeltaFactor:self.saturationDeltaFactor maskImage:nil];
             dispatch_async_main(^{
                 self.layer.contents = (id)blurredImage.CGImage;
                 self.layer.contentsScale = 1./scaleDownFactor;
+                self.backgroundColor = [UIColor clearColor];
             });
         });
 
